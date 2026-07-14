@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: Código.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: Código.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * @file Código.js
+ * @description Não usado atualmente
+ */
+    
+    //ver se é possível incorporar ao google sites
+    //enviar dados para planilha(banco de dado) PSC
+    // incluir juízo (coluna I) e classe ( coluna o) no retorno da consulta
+    // fazer teste de busca sem uso de fórmulas - nova planilha
+
+function consultar() {
+  var planilha = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Consulta");
+  var processo = planilha.getRange("D1");
+  var nome = planilha.getRange("D2");
+
+  // Obtém os valores das células
+  var processoValor = processo.getValue();
+  var nomeValor = nome.getValue();
+
+  // Define os valores e fórmulas dos intervalos
+  var intervaloValores = planilha.getRange("C5:C9");
+
+  var intervaloFormulas = planilha.getRange("D5:D8");
+
+  if (processoValor === "" &amp;&amp; nomeValor !== "") {
+    planilha.getRange("D1").setFormula('=INDEX(PSC!A:A;MATCH(D2;PSC!B:B;0))');
+    intervaloValores.setValues([
+    ['Pena'],
+    ['Entidade'],
+    ['Executado'],
+    ['Relatório'],
+    ['=IF(PROCV_PSC(16);"PP cadastrada";"")']
+  ]);
+    intervaloFormulas.setFormulas([
+    ['=PROCV_PSC(3)'],
+    ['=PROCV_PSC(8)'],
+    ['=PROCV_PSC(6)'],
+    ['=PROCV_PSC(11)']
+  ]);
+  } else if (nomeValor === "" &amp;&amp; processoValor !== "") {
+    planilha.getRange("D2").setFormula('=PROCV_PSC(2)');
+    intervaloValores.setValues([
+    ['Pena'],
+    ['Entidade'],
+    ['Executado'],
+    ['Relatório'],
+    ['=IF(PROCV_PSC(16);"PP cadastrada";"")']
+  ]);
+    intervaloFormulas.setFormulas([
+    ['=PROCV_PSC(3)'],
+    ['=PROCV_PSC(8)'],
+    ['=PROCV_PSC(6)'],
+    ['=PROCV_PSC(11)']
+  ]);
+  } else if (nomeValor === "" &amp;&amp; processoValor === "") {
+    SpreadsheetApp.getUi().alert('Insira processo ou nome!');
+  }
+}
+function limparCelulas() {
+  // Obtém a planilha com o nome "consulta"
+  var planilha = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Consulta");
+  planilha.getRange("D1:I2").clearContent();
+  planilha.getRange("C5:D10").clearContent();
+
+}</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#alterarEntidade">alterarEntidade</a></li><li><a href="global.html#alterarParcela">alterarParcela</a></li><li><a href="global.html#alterarPena">alterarPena</a></li><li><a href="global.html#atualizar">atualizar</a></li><li><a href="global.html#atualizarPP">atualizarPP</a></li><li><a href="global.html#buscarCategorias">buscarCategorias</a></li><li><a href="global.html#buscarColuna">buscarColuna</a></li><li><a href="global.html#buscarDadosPP">buscarDadosPP</a></li><li><a href="global.html#buscarEntidadesOuPrestadores">buscarEntidadesOuPrestadores</a></li><li><a href="global.html#buscarLinha">buscarLinha</a></li><li><a href="global.html#buscarPorNome">buscarPorNome</a></li><li><a href="global.html#buscarPorProcesso">buscarPorProcesso</a></li><li><a href="global.html#buscarUltimaLinhaValida">buscarUltimaLinhaValida</a></li><li><a href="global.html#criarRespostaErro">criarRespostaErro</a></li><li><a href="global.html#criarRespostaSucesso">criarRespostaSucesso</a></li><li><a href="global.html#destinacaoValores">destinacaoValores</a></li><li><a href="global.html#doGet">doGet</a></li><li><a href="global.html#doOptions">doOptions</a></li><li><a href="global.html#doPost">doPost</a></li><li><a href="global.html#encontrarUltimaLinhaComConteudo">encontrarUltimaLinhaComConteudo</a></li><li><a href="global.html#enviarDadosParaAnalise">enviarDadosParaAnalise</a></li><li><a href="global.html#enviarParaLotacaoPP">enviarParaLotacaoPP</a></li><li><a href="global.html#enviarParaLotacaoPSC">enviarParaLotacaoPSC</a></li><li><a href="global.html#excluirPena">excluirPena</a></li><li><a href="global.html#extrairColunas">extrairColunas</a></li><li><a href="global.html#extrairLink">extrairLink</a></li><li><a href="global.html#handlePPPost">handlePPPost</a></li><li><a href="global.html#handlePPRequest">handlePPRequest</a></li><li><a href="global.html#handlePSCPost">handlePSCPost</a></li><li><a href="global.html#handlePSCRequest">handlePSCRequest</a></li><li><a href="global.html#handleVagasRequest">handleVagasRequest</a></li><li><a href="global.html#montarObjeto">montarObjeto</a></li><li><a href="global.html#obterOpcaoMesAtual">obterOpcaoMesAtual</a></li><li><a href="global.html#proximaLinhaInsercao">proximaLinhaInsercao</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Tue Jul 14 2026 17:34:22 GMT-0300 (Horário Padrão de Brasília)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: requisições.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: requisições.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * @file requisições.js
+ * @description Responsável por receber e responder as requisições do site, possui
+ * todas as portas de entrada da API.
+ */
+
+/**
+ * @typedef e Objeto FormData enviado pelo site, o script identifica os parametros
+ * em formato string JSON dentro de parameter.
+ * @property {object} parameter
+ * @property {object} postData
+ */
+
+/**
+ * Porta Get única, decide o que vai ser retornado através dos parâmetros recebidos,
+ * coleta os dados das planilhas .PSC e .PP.
+ * @param {e} e 
+ * @returns {*} retorna um JSON com as informações o front-end.
+ */
+function doGet(e) {
+  try {
+
+    //aba vagas do site
+    if (e.parameter.vagas) {
+      return handleVagasRequest(e);
+    }
+    //aba consulta do site
+    if (e.parameter.aba || e.parameter.colunas) {
+      return handlePPRequest(e);
+    }
+    //aba consulta do site
+    if (e.parameter.entidades || e.parameter.getEntidades || 
+        e.parameter.processo || e.parameter.nome) {
+      return handlePSCRequest(e);
+    }
+    //aba execução de penas no site
+    if (e.parameter.analiseDados) {
+      return enviarDadosParaAnalise();
+    }
+    //aba destinação de valores no site
+    if (e.parameter.destinacaoValores) {
+      return destinacaoValores();
+    }
+
+    throw new Error("Requisição não reconhecida");
+    
+  } catch (err) {
+    return ContentService.createTextOutput(
+      JSON.stringify({error: err.message})
+    ).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+/**
+ * Porta única Post, insere e altera dados nas planilhas .PP e .PSC .
+ * @param {e} e 
+ * @returns {*} retorna um JSON de sucesso ou erro.
+ */
+function doPost(e) {
+  Logger.log("Evento 'e' recebido: " + JSON.stringify(e)); 
+  try {
+    //insere um novo cadastro PP ou PSC
+    if (e.parameter &amp;&amp; (e.parameter.processo || e.parameter.nome)) {
+      return handlePSCPost(e);
+    }
+    //altera cadastros já existentes
+    if (e.parameter.excluirpp || e.parameter.excluirpsc || e.parameter.altPenapp || e.parameter.altPenapsc || e.parameter.altEntidade || e.parameter.altParcelas) {
+      return atualizar(e.parameter);
+    }
+
+    const params = JSON.parse(e.postData.contents);
+    
+    if (params.mes) {
+      return handlePPPost(e);
+    }
+    throw new Error("Tipo de POST não reconhecido");
+    
+  } catch (err) {
+    return ContentService.createTextOutput(
+      JSON.stringify({error: err.message})
+    ).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+/**
+ * função específica para busca na PP.
+ * @param {e} e 
+ * @returns {*} JSON
+ */
+function handlePPRequest(e) {
+  var planilha = SpreadsheetApp.getActiveSpreadsheet();
+  var nomeAba = e.parameter.aba || "";
+  var colunas = e.parameter.colunas ? e.parameter.colunas.split(",") : [];
+
+  if (!nomeAba || colunas.length === 0) {
+    throw new Error("Especifique a aba e as colunas!");
+  }
+
+  var aba = planilha.getSheetByName(nomeAba);
+  if (!aba) {
+    throw new Error("Aba não encontrada!");
+  }
+
+  var dados = extrairColunas(aba, colunas);
+  return ContentService.createTextOutput(JSON.stringify(dados))
+    .setMimeType(ContentService.MimeType.JSON);
+
+}
+
+/**
+ * lógica para inserir na PP quando ainda recebia no formato json e nao em FormData
+ * (não usada).
+ * @param {*} e 
+ */
+function handlePPPost(e) {
+  try {
+    var params = JSON.parse(e.postData.contents);
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("resultado pp");
+
+
+    if (!sheet) {
+      return ContentService.createTextOutput(JSON.stringify({ erro: "Aba não encontrada!" }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+
+    var dados = params.dados; // Array com os dados
+    var mes = params.mes;
+    var erros = params.erros || [];
+    var data = params.data ||new Date();
+
+    // Define a primeira linha onde os dados serão escritos (após os cabeçalhos)
+    var ultimaLinha = 2;
+    var range = sheet.getRange(ultimaLinha, 1, dados.length, dados[0].length);
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var abaResultado = ss.getSheetByName("resultado pp");
+    range.setValues(dados);
+    try{
+      atualizarPP(mes, erros, data); // add data
+      Logger.log("Planilha PP atualizada com sucesso!");
+    }
+    catch{
+      Logger.log("erro ao atualizar planilha de consulta PP");
+    }
+    //abaResultado.clearContents();
+    return ContentService.createTextOutput(JSON.stringify({ sucesso: "Dados inseridos com sucesso!" }))
+      .setMimeType(ContentService.MimeType.JSON);
+   
+  } catch (erro) {
+    return ContentService.createTextOutput(JSON.stringify({ erro: erro.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+/**
+ * Função expecífica para buscas na .PSC.
+ * @param {e} e 
+ * @returns {*} JSON
+ */
+function handlePSCRequest(e) {
+  var planilha = SpreadsheetApp.getActiveSpreadsheet();
+  if (e.parameter.entidade !== undefined || e.parameter.getEntidades !== undefined) {
+        return buscarEntidadesOuPrestadores(e, planilha);
+  }
+  var abaPSC = planilha.getSheetByName("PSC");
+  var abaPP = planilha.getSheetByName("PP");
+  var processoValor = e.parameter.processo || ""; 
+  var nomeValor = e.parameter.nome || ""; 
+  var dadosPSC = abaPSC.getDataRange().getValues(); // Obtém os valores da aba PSC
+  var dadosPP = abaPP.getDataRange().getValues();
+  var linksRelatorio = abaPSC.getRange(2, 11, dadosPSC.length - 1, 1).getRichTextValues(); // Obtém os links da coluna K (relatórios)
+  var resultado = {};
+
+  if (processoValor === "" &amp;&amp; nomeValor !== "") {
+    resultado = buscarPorNome(dadosPSC, dadosPP, linksRelatorio, nomeValor);
+
+  } else if (nomeValor === "" &amp;&amp; processoValor !== "") {
+    resultado = buscarPorProcesso(dadosPSC, dadosPP, linksRelatorio, processoValor);
+
+  } else {
+    resultado.erro = "Insira um processo ou nome!";
+  }
+  if (resultado.executado === 'eproc' || resultado.executado == 'SEEU') {
+    resultado['ignorado'] = true;
+    resultado['motivo'] = `Informa as horas pelo ${resultado.executado}`;
+  }
+  return ContentService.createTextOutput(JSON.stringify(resultado))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
+ * Função que realiza novos cadastros, primeiro insere na .PSC, caso exista e depois na .PP
+ * caso exista, insere tanto os dados como as fórmulas na última linha das respectivas planilhas
+ * @param {e} e 
+ */
+function handlePSCPost(e) {
+  Logger.log("função iniciada")
+  let p = e.parameter;
+  try {
+      
+    const dados = [
+      p.processo,
+      p.nome,
+      p.pena,
+      p.minMensal,
+      p.maxMensal,
+      null, null,
+      p.entidade,
+      p.juizo,
+      null, null, null, null, null,
+      p.classes, 
+      null, 
+      p.penaPP, 
+      p.parcela
+    ];
+   
+    const temPSC = [p.pena, p.minMensal, p.maxMensal, p.entidade]
+               .every(v => String(v || '').trim() !== '');
+
+    const temPP  = [p.penaPP, p.parcela]
+               .every(v => String(v || '').trim() !== '');
+    Logger.log("appendRow executado");
+    
+    if (temPSC) {
+      enviarParaLotacaoPSC(dados);
+    }
+    if (temPP) {
+      enviarParaLotacaoPP(dados);
+    }
+    Logger.log("cadastro realizado com sucesso");
+    //enviarParaLotacao(linha);
+    return ContentService
+      .createTextOutput(JSON.stringify({ mensagem: "Cadastro realizado com sucesso!" }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (erro) {
+    const planilha = SpreadsheetApp.getActiveSpreadsheet();
+    let abaErros = planilha.getSheetByName("Erros");
+    if(!abaErros){
+      abaErros = planilha.insertSheet("Erros");
+      abaErros.appendRow([
+        "Erro", "Processo", "Prestador de serviços", "Pena", "Mínimo", "Máximo", "Executado", "A cumprir",
+        "Entidade", "Juízo", "%", "Relatório", "Links", "E-mail", "Fiscalizar", "Classe", "PP", "PenaPP", "Parcela"
+      ]);
+    }
+    //let p = e.parameter;
+    const dadosErro = [
+      erro.toString(),  // Mensagem do erro
+      p?.processo || "",
+      p?.nome || "",
+      p?.pena || "",
+      p?.minMensal || "",
+      p?.maxMensal || "",
+      "", "", // Executado / A cumprir
+      p?.entidade || "",
+      p?.juizo || "",
+      "", "", "", "", // % / Relatório / Links / Email / Fiscalizar
+      p?.classes || "",
+      "",              // PP (não usado diretamente)
+      p?.penaPP || "",
+      p?.parcela || ""
+    ];
+    const ultimaLinhaReal = encontrarUltimaLinhaComConteudo(abaErros);
+    abaErros.getRange(ultimaLinhaReal + 1, 1, 1, dadosErro.length).setValues([dadosErro]);
+    // Adiciona o erro à planilha
+    //abaErros.appendRow(dadosErro);
+    //const ultimaLinha2 = sheet.getLastRow();
+   // if (ultimaLinha2 > 1) {
+  //    sheet.getRange(2, 1, ultimaLinha2 - 1, sheet.getLastColumn()).clearContent();
+    //}
+    Logger.log(erro);
+    return ContentService
+      .createTextOutput(JSON.stringify({ mensagem: "Erro ao processar os dados: " + erro }))
+      .setMimeType(ContentService.MimeType.JSON);   
+  }
+
+}
+
+/**
+ * busca a última linha preenchida em uma aba.
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet 
+ * @returns {number} numero da linha.
+ */
+function encontrarUltimaLinhaComConteudo(sheet) {
+  const numLinhas = sheet.getMaxRows();
+  const numColunas = sheet.getLastColumn();
+
+  for (let i = numLinhas; i >= 1; i--) {
+    const valores = sheet.getRange(i, 1, 1, numColunas).getValues()[0];
+    const linhaTemDado = valores.some(cel => {
+      if (typeof cel === 'string') {
+        return cel.trim() !== '';
+      }
+      return cel !== '' &amp;&amp; cel !== null;
+    });
+    if (linhaTemDado) {
+      return i;
+    }
+  }
+  return 1; // Caso nenhuma linha tenha dados
+}
+
+/**
+ * Formata e insere os dados e fórmulas na aba 'Lotação' da planilha .PSC.
+ * @param {object} dados
+ */
+function enviarParaLotacaoPSC(dados) {
+    const urlDestino = "https://docs.google.com/spreadsheets/d/1OpwOjfYiqPXH0324DGbYDHf9syDlPcS0uIBB771BmmY/edit";
+    const planilhaDestino = SpreadsheetApp.openByUrl(urlDestino);
+    const abaLotacao = planilhaDestino.getSheetByName("Lotação");
+
+    if (!abaLotacao) {
+        throw new Error("Aba 'Lotação' não encontrada na planilha de destino.");
+    }
+
+    // Encontra a próxima linha vazia para inserção (adiciona 1 ao último conteúdo)
+    let linhaDestino = encontrarUltimaLinhaComConteudo(abaLotacao) + 1;
+    const totalNumColunas = 16; // Colunas A a P
+
+    try {
+        const novaLinha = new Array(totalNumColunas).fill(""); // Inicializa o array com strings vazias
+
+        // Extrai e limpa a entidade uma vez
+        const entidade = String(dados[7] || '').trim();
+
+        // Preenche os valores diretos no array novaLinha (0-indexed)
+        novaLinha[0] = dados[0];   // Coluna A: Processo
+        novaLinha[1] = dados[1];   // Coluna B: Nome
+        novaLinha[2] = dados[2];   // Coluna C: Pena
+        novaLinha[3] = dados[3];   // Coluna D: Mínimo Mensal
+        novaLinha[4] = dados[4];   // Coluna E: Máximo Mensal
+        novaLinha[5] = `=IFS(C${linhaDestino}=\"\\\";\"\\\";C${linhaDestino}>0;IMPORTRANGE(L${linhaDestino}; CONCAT(B${linhaDestino};\"!$A$6\")))`; // Coluna F (Executado)
+        if (entidade === "Conselho da Comunidade - Cascavel" || entidade === "Conselho da Comunidade - Pato Branco") { // Coluna G (A Cumprir) 
+            novaLinha[6] = `\"SEEU\"`; // Texto literal
+        } else {
+            novaLinha[6] = `=IFS(C${linhaDestino}=\"\\\";\"\\\";C${linhaDestino}>0;C${linhaDestino}-F${linhaDestino})`;
+        }
+        novaLinha[7] = entidade;   // Coluna H: Entidade
+        novaLinha[8] = dados[8];   // Coluna I: Juízo
+        novaLinha[9] = `=IF(ISERROR(F${linhaDestino}*100/C${linhaDestino});\"\\\";F${linhaDestino}*100/C${linhaDestino})`; // Coluna J (%)
+        novaLinha[10] = `=IFS(C${linhaDestino}=\"\\\";\"\\\";C${linhaDestino}>0;IMPORTRANGE(L${linhaDestino}; CONCAT(B${linhaDestino};\"!$A$7\")))`; // Coluna K (Relatório)
+        novaLinha[11] = `=IF(H${linhaDestino}=\"\\\";\"\\\";VLOOKUP(H${linhaDestino};\'Quadro de Vagas\'!C:D;2;FALSE))`; // Coluna L (Links)
+        novaLinha[12] = "";        // Coluna M: E-mail (permanece vazio)
+        novaLinha[13] = obterOpcaoMesAtual(); // Coluna N: Fiscalização
+        novaLinha[14] = dados[14]; // Coluna O: Classes
+        novaLinha[15] = `=IF(A${linhaDestino}=\"\\\";\"\\\";ISTEXT(VLOOKUP(A${linhaDestino};IMPORTRANGE(\"https://docs.google.com/spreadsheets/d/1ouGkmzF8_dJUZPXRigsL9qpgZ9hMiBOtaqbZs3utxNU/edit?gid=1597838336\";\"3PP!A:O\");1;FALSE)))`; // Coluna P (PP)
+        
+        //MUDANÇA -- envia tudo de uma vez para melhorar desempenho
+        abaLotacao.getRange(linhaDestino, 1, 1, totalNumColunas).setValues([novaLinha])
+
+        Logger.log("Dados adicionados à aba 'Lotação' na linha " + linhaDestino);
+    } catch (erro) {
+        Logger.log("Erro ao enviar para Lotação: " + erro);
+        // Limpa a linha se um erro ocorrer durante a inserção
+        if (linhaDestino &lt;= abaLotacao.getMaxRows() + 1) { // Verifica se a linha foi adicionada ou existia
+            abaLotacao.getRange(linhaDestino, 1, 1, totalNumColunas).clearContent();
+        }
+        throw erro; // Re-lança o erro para ser tratado por handlePSCPost
+    }
+}
+
+/**
+ * Formata e insere os dados na primeira aba da planilha .PP.
+ * @param {object} dados 
+ */
+function enviarParaLotacaoPP(dados) {
+  const urlDestino = "https://docs.google.com/spreadsheets/d/1ouGkmzF8_dJUZPXRigsL9qpgZ9hMiBOtaqbZs3utxNU/edit";
+  const planilhaDestino = SpreadsheetApp.openByUrl(urlDestino);
+  const abaPP = planilhaDestino.getSheetByName("3PP");
+  if (!abaPP) throw new Error("Aba '3PP' não encontrada.");
+
+  const NUM_COLUNAS = 28;
+  let linhaDestino = proximaLinhaInsercao(abaPP);;
+
+  try {
+    const novaLinha = new Array(28).fill("");
+    const colunasParaPreencher = {
+      1: dados[0],    // A: Processo
+      2: dados[1],    // B: Nome
+      19: dados[8],   // Q: Juízo - vira S
+      21: dados[14],  // S: Classe vira U
+      22: dados[16],  // T: PenaPP vira v
+      23: dados[17],  // U: Parcela vira w
+    };
+    for (const [coluna, valor] of Object.entries(colunasParaPreencher)) {
+      novaLinha[coluna - 1] = valor; // Arrays começam em 0
+    }
+    novaLinha[19] = obterOpcaoMesAtual(); // Coluna T
+    abaPP.getRange(linhaDestino, 1, 1, 28).setValues([novaLinha]);
+
+    const formulaZ = `=NOT(ISNA(VLOOKUP(A${linhaDestino};IMPORTRANGE(\"https://docs.google.com/spreadsheets/d/1OpwOjfYiqPXH0324DGbYDHf9syDlPcS0uIBB771BmmY/edit\";\"Lotação!A2:C\");3;FALSE)))`;
+    abaPP.getRange(linhaDestino, 18).setFormula(formulaZ);
+    // Linha já existente (coluna R = 18)
+
+    //fórmula para coluna X (coluna 24)
+    const formulaX = `=IF(ISNUMBER(V${linhaDestino});D${linhaDestino}/V${linhaDestino};"")`;
+    abaPP.getRange(linhaDestino, 24).setFormula(formulaX);
+
+    // fórmula para coluna Z (coluna 26)
+    const formulaZ2 = `=IFERROR(IFS($Z$1="Janeiro";E${linhaDestino}/D${linhaDestino};
+                                    $Z$1="Fevereiro";F${linhaDestino}/D${linhaDestino};
+                                    $Z$1="Março";G${linhaDestino}/D${linhaDestino};
+                                    $Z$1="Abril";H${linhaDestino}/D${linhaDestino};
+                                    $Z$1="Maio";I${linhaDestino}/D${linhaDestino};
+                                    $Z$1="Junho";J${linhaDestino}/D${linhaDestino};
+                                    $Z$1="Julho";K${linhaDestino}/D${linhaDestino};
+                                    $Z$1="Agosto";L${linhaDestino}/D${linhaDestino};
+                                    $Z$1="Setembro";M${linhaDestino}/D${linhaDestino};
+                                    $Z$1="Outubro";N${linhaDestino}/D${linhaDestino};
+                                    $Z$1="Novembro";O${linhaDestino}/D${linhaDestino};
+                                    $Z$1="Dezembro";P${linhaDestino}/D${linhaDestino});N(0))`;
+    abaPP.getRange(linhaDestino, 26).setFormula(formulaZ2);
+
+    const formulaAA = `=IF(ISERROR(D${linhaDestino}/(V${linhaDestino}/W${linhaDestino}));"";IF(D${linhaDestino}/(V${linhaDestino}/W${linhaDestino})&lt;W${linhaDestino};CONCATENATE(INT(D${linhaDestino}/(V${linhaDestino}/W${linhaDestino}));"/";W${linhaDestino});"ERRO"))`;
+    abaPP.getRange(linhaDestino, 27).setFormula(formulaAA); // Coluna AA
+    
+    const formulaAB = `=IF(COUNTIF(A:A;A${linhaDestino})>1;"Duplicado";"")`;
+    abaPP.getRange(linhaDestino, 28).setFormula(formulaAB); // Coluna AB
+
+    Logger.log(`Dados adicionados na linha ${linhaDestino}`);
+  } catch (e) {
+    
+    abaPP.getRange(linhaDestino, 1, 1, NUM_COLUNAS).clearContent();
+    
+    Logger.log("Erro ao enviarParaLotacaoPP: " + e);
+    throw e;
+  }
+}
+
+/**
+ * função que decide quando haverá fiscalização baseado no mês de cadastro,
+ * como ocorre mês sim e mês não tem as opções 'ímpar' e 'par'.
+ * @returns {string} opção de fiscalização selecionada.
+ */
+function obterOpcaoMesAtual() {
+  const opcoesSelecao = ["PAR", "ÍMPAR"];
+  const dataAtual = new Date();
+  const mesAtual = dataAtual.getMonth() + 1; //pois a função retorna janeiro 0 
+  return opcoesSelecao[mesAtual % 2]; //nova lógica de fiscalização a cada dois meses
+}
+
+/**
+ * Busca a próxima linha real onde deve ser inserido um dado na aba,
+ * caso não exista linha vazia, cria uma
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} abaPP 
+ * @returns {number} número da linha encontrada ou criada
+ */
+function proximaLinhaInsercao(abaPP) {
+  const NUM_COLUNAS = 2;
+
+  const ultimaLinha = abaPP.getLastRow();
+  let linha = ultimaLinha;
+
+  while (linha >= 1) {
+    const valores = abaPP.getRange(linha, 1, 1, NUM_COLUNAS).getDisplayValues()[0];
+    const temConteudo = valores.some(v => v !== '' &amp;&amp; v !== null);
+    if (temConteudo) break;
+    linha--;
+  }
+
+  const linhaDestino = linha + 1;
+  const totalLinhas = abaPP.getMaxRows();
+
+  if (linhaDestino > totalLinhas) {
+    abaPP.insertRowsAfter(totalLinhas, 1);
+  }
+
+  return linhaDestino;
+}
+
+/**
+ * Retorna as informações referente a entidades obtida na aba 'vagas', informações essas que são um import
+ * da aba 'Quadro de Vagas' da planilha .PSC.
+ * @param {e} e 
+ * @returns {*} JSON
+ */
+function handleVagasRequest(e) {
+  const ENTIDADE_DELIMITADORA = "x PSC encerrada";
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("vagas");
+
+  if (!sheet) {
+    throw new Error(`A aba vagas não foi encontrada.`);
+  }
+  const allData = sheet.getDataRange().getValues();
+  const vagasFiltradas = [];
+
+  for (let i = 2; i &lt; allData.length; i++) {
+    const row = allData[i];
+    const nomeEntidade = String(row[0] || '').trim();
+    const textoPadrao = row[3];
+    const local = row[4];
+    const vagasDisponiveis = row[8];
+    const observacao = row[13];         
+
+    if (nomeEntidade.toLowerCase() === ENTIDADE_DELIMITADORA.toLowerCase()) {
+      Logger.log(`Leitura interrompida na entidade: ${nomeEntidade}`);
+      break; // INTERROMPE o loop
+    }
+    if (local.toLowerCase() === "diversas") {
+        continue;
+    }
+    const statusVaga = String(vagasDisponiveis).trim().toLowerCase();
+
+    if (statusVaga !== "encerramento" &amp;&amp; nomeEntidade) {
+      vagasFiltradas.push({
+        entidade: nomeEntidade,
+        texto: textoPadrao,
+        local: local,
+        vagas: vagasDisponiveis,
+        obs:  observacao
+      });
+    }
+  }
+
+  const jsonResponse = {
+    count: vagasFiltradas.length,
+    data: vagasFiltradas
+  };
+
+  return ContentService.createTextOutput(
+    JSON.stringify(jsonResponse)
+  ).setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
+ * @typedef parametros parametros recebidos como um FormData do front
+ * @property {string} prestador
+ * @property {string} penapp
+ * @property {string} penapsc
+ * @property {string} excluirpp
+ * @property {string} excluirpsc 
+ * @property {string} induto
+ * @property {string} novaEntidade
+ * @property {string} altEntidade
+ * @property {string} altPenapp
+ * @property {string} altPenapsc
+ * @property {string} altParcelas
+ * @property {string} parcelas
+ */
+
+/**
+ * realiza alterações em cadastros nas planilhas PP e PSC
+ * @param {parametros} params 
+ * @returns retorna o resultado positivo ou negativo para o front
+ */
+function atualizar(params) {
+  try {
+    //planilhas
+    const PSC = SpreadsheetApp.openByUrl("https://docs.google.com/spreadsheets/d/1OpwOjfYiqPXH0324DGbYDHf9syDlPcS0uIBB771BmmY/edit");
+    const PP = SpreadsheetApp.openByUrl("https://docs.google.com/spreadsheets/d/1ouGkmzF8_dJUZPXRigsL9qpgZ9hMiBOtaqbZs3utxNU/edit");
+
+    // Converte os parâmetros de string para booleano 
+    const excluirpp = params.excluirpp === "true";
+    const excluirpsc = params.excluirpsc === "true";
+    const induto = params.induto === "true";
+    const altEntidade = params.altEntidade === "true";
+    const altPenapp = params.altPenapp === "true";
+    const altPenapsc = params.altPenapsc === "true";
+    const altParcelas = params.altParcelas === "true";
+
+    if (excluirpp) {
+      excluirPena(PP, params.prestador, null);
+    }
+    if (excluirpsc) {
+      excluirPena(PSC, params.prestador, induto);
+    }
+    if (altEntidade) {
+      alterarEntidade(PSC, params.prestador, params.novaEntidade);
+    }
+    if (altPenapp) {
+      alterarPena(PP, params.prestador, params.penapp);
+    }
+    if (altPenapsc) {
+      alterarPena(PSC, params.prestador, params.penapsc);
+    }
+    if (altParcelas) {
+      alterarParcela(PP, params.prestador, params.parcelas);
+    }
+    return ContentService.createTextOutput(JSON.stringify({ sucesso: "Dados atualizados com sucesso!" }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (erro) {
+    return ContentService.createTextOutput(JSON.stringify({ erro: erro.message }))
+    .setMimeType(ContentService.MimeType.JSON);
+  }
+}</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#alterarEntidade">alterarEntidade</a></li><li><a href="global.html#alterarParcela">alterarParcela</a></li><li><a href="global.html#alterarPena">alterarPena</a></li><li><a href="global.html#atualizar">atualizar</a></li><li><a href="global.html#atualizarPP">atualizarPP</a></li><li><a href="global.html#buscarCategorias">buscarCategorias</a></li><li><a href="global.html#buscarColuna">buscarColuna</a></li><li><a href="global.html#buscarDadosPP">buscarDadosPP</a></li><li><a href="global.html#buscarEntidadesOuPrestadores">buscarEntidadesOuPrestadores</a></li><li><a href="global.html#buscarLinha">buscarLinha</a></li><li><a href="global.html#buscarPorNome">buscarPorNome</a></li><li><a href="global.html#buscarPorProcesso">buscarPorProcesso</a></li><li><a href="global.html#buscarUltimaLinhaValida">buscarUltimaLinhaValida</a></li><li><a href="global.html#criarRespostaErro">criarRespostaErro</a></li><li><a href="global.html#criarRespostaSucesso">criarRespostaSucesso</a></li><li><a href="global.html#destinacaoValores">destinacaoValores</a></li><li><a href="global.html#doGet">doGet</a></li><li><a href="global.html#doOptions">doOptions</a></li><li><a href="global.html#doPost">doPost</a></li><li><a href="global.html#encontrarUltimaLinhaComConteudo">encontrarUltimaLinhaComConteudo</a></li><li><a href="global.html#enviarDadosParaAnalise">enviarDadosParaAnalise</a></li><li><a href="global.html#enviarParaLotacaoPP">enviarParaLotacaoPP</a></li><li><a href="global.html#enviarParaLotacaoPSC">enviarParaLotacaoPSC</a></li><li><a href="global.html#excluirPena">excluirPena</a></li><li><a href="global.html#extrairColunas">extrairColunas</a></li><li><a href="global.html#extrairLink">extrairLink</a></li><li><a href="global.html#handlePPPost">handlePPPost</a></li><li><a href="global.html#handlePPRequest">handlePPRequest</a></li><li><a href="global.html#handlePSCPost">handlePSCPost</a></li><li><a href="global.html#handlePSCRequest">handlePSCRequest</a></li><li><a href="global.html#handleVagasRequest">handleVagasRequest</a></li><li><a href="global.html#montarObjeto">montarObjeto</a></li><li><a href="global.html#obterOpcaoMesAtual">obterOpcaoMesAtual</a></li><li><a href="global.html#proximaLinhaInsercao">proximaLinhaInsercao</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Tue Jul 14 2026 17:34:22 GMT-0300 (Horário Padrão de Brasília)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

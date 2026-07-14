@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Home</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Consulta 3.0</h1>
+
+    <h5 style="margin: 24px;">
+        A presente planilha funciona como uma API, ou seja, um intermediário entre banco de dados e front-end. Através de requisições GET e POST acessa as outras 
+        planilhas (banco de dados), busca ou atualiza dados, formata e envia as respostas esperadas pelo site (front-end). 
+        <p>
+            A necessidade de criação desta planilha se deu devido a uma limitação imposta ao domínio da justiça federal, planilhas criadas
+            por emails no domínio da justiça não podem ser acessadas diretamente via implantação do Google App Script, portanto, se tornando impossível
+            para as planilhas PSC e PP informarem diretamente ao site suas respectivas informações, para lidar com isso, foi criada esta planilha intermediária
+            que é hospedada em um email do próprio Google (@gmail). 
+        </p>
+        <p>
+            Dito isso, é de responsabilidade das funções presentes nesta planilha:
+        </p>
+        <ul>
+            Através da requisição GET
+            <li>
+                Informar a aba consulta de processos no site as informações encontradas na(s) planilha(s) referentes(s).
+            </li>
+            <li>
+                Informar tanto a aba de consulta de processos como a aba de vagas disponíveis todas as entidades registradas na aba quadro vagas da planilha PSC.
+            </li>
+            <li>
+                Informar a planilha de fiscalização os dados referente ao processo recebido no momento da geração de relatórios.
+            </li>
+            <li>
+                Informar as abas da página dados 4 Vara os dados registrados em suas respectivas planilhas fonte. 
+            </li>
+            <br>Através da requisição POST
+            <li>
+                Atualizar as planilhas PSC e PP quando houver alterações no cadastro via site.
+            </li>
+            <li>
+                Inserir novos cadastros nas planilhas PSC e PP via site.
+            </li>
+        </ul>
+
+    </h5>
+
+
+
+    
+
+
+    <h3> </h3>
+
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+<section>
+
+<header>
+    
+        <h2>Código.js</h2>
+        
+    
+</header>
+
+<article>
+    <div class="container-overview">
+    
+        
+            <div class="description">Não usado atualmente</div>
+        
+
+        
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="C%C3%B3digo.js.html">Código.js</a>, <a href="C%C3%B3digo.js.html#line1">line 1</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+        
+    
+    </div>
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</article>
+
+</section>
+
+
+
+
+
+
+
+<section>
+
+<header>
+    
+        <h2>dados4Vara.js</h2>
+        
+    
+</header>
+
+<article>
+    <div class="container-overview">
+    
+        
+            <div class="description">Responsável por fornecer as informações para a página dados 4 vara no site.</div>
+        
+
+        
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="dados4Vara.js.html">dados4Vara.js</a>, <a href="dados4Vara.js.html#line1">line 1</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+        
+    
+    </div>
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</article>
+
+</section>
+
+
+
+
+
+
+
+<section>
+
+<header>
+    
+        <h2>requisições.js</h2>
+        
+    
+</header>
+
+<article>
+    <div class="container-overview">
+    
+        
+            <div class="description">Responsável por receber e responder as requisições do site, possui
+todas as portas de entrada da API.</div>
+        
+
+        
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="requisi%C3%A7%C3%B5es.js.html">requisições.js</a>, <a href="requisi%C3%A7%C3%B5es.js.html#line1">line 1</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+        
+    
+    </div>
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</article>
+
+</section>
+
+
+
+
+
+
+
+<section>
+
+<header>
+    
+        <h2>webApp.js</h2>
+        
+    
+</header>
+
+<article>
+    <div class="container-overview">
+    
+        
+            <div class="description">Responsável por buscar e alterar dados nas planilhas.</div>
+        
+
+        
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="webApp.js.html">webApp.js</a>, <a href="webApp.js.html#line1">line 1</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+        
+    
+    </div>
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</article>
+
+</section>
+
+
+
+
+
+
+
+<section>
+
+<header>
+    
+        <h2>webAppPP.js</h2>
+        
+    
+</header>
+
+<article>
+    <div class="container-overview">
+    
+        
+            <div class="description">Rewsponsável por buscar e atualizar dados exclusivamente na planilha PP.</div>
+        
+
+        
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="webAppPP.js.html">webAppPP.js</a>, <a href="webAppPP.js.html#line1">line 1</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+        
+    
+    </div>
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</article>
+
+</section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#alterarEntidade">alterarEntidade</a></li><li><a href="global.html#alterarParcela">alterarParcela</a></li><li><a href="global.html#alterarPena">alterarPena</a></li><li><a href="global.html#atualizar">atualizar</a></li><li><a href="global.html#atualizarPP">atualizarPP</a></li><li><a href="global.html#buscarCategorias">buscarCategorias</a></li><li><a href="global.html#buscarColuna">buscarColuna</a></li><li><a href="global.html#buscarDadosPP">buscarDadosPP</a></li><li><a href="global.html#buscarEntidadesOuPrestadores">buscarEntidadesOuPrestadores</a></li><li><a href="global.html#buscarLinha">buscarLinha</a></li><li><a href="global.html#buscarPorNome">buscarPorNome</a></li><li><a href="global.html#buscarPorProcesso">buscarPorProcesso</a></li><li><a href="global.html#buscarUltimaLinhaValida">buscarUltimaLinhaValida</a></li><li><a href="global.html#criarRespostaErro">criarRespostaErro</a></li><li><a href="global.html#criarRespostaSucesso">criarRespostaSucesso</a></li><li><a href="global.html#destinacaoValores">destinacaoValores</a></li><li><a href="global.html#doGet">doGet</a></li><li><a href="global.html#doOptions">doOptions</a></li><li><a href="global.html#doPost">doPost</a></li><li><a href="global.html#encontrarUltimaLinhaComConteudo">encontrarUltimaLinhaComConteudo</a></li><li><a href="global.html#enviarDadosParaAnalise">enviarDadosParaAnalise</a></li><li><a href="global.html#enviarParaLotacaoPP">enviarParaLotacaoPP</a></li><li><a href="global.html#enviarParaLotacaoPSC">enviarParaLotacaoPSC</a></li><li><a href="global.html#excluirPena">excluirPena</a></li><li><a href="global.html#extrairColunas">extrairColunas</a></li><li><a href="global.html#extrairLink">extrairLink</a></li><li><a href="global.html#handlePPPost">handlePPPost</a></li><li><a href="global.html#handlePPRequest">handlePPRequest</a></li><li><a href="global.html#handlePSCPost">handlePSCPost</a></li><li><a href="global.html#handlePSCRequest">handlePSCRequest</a></li><li><a href="global.html#handleVagasRequest">handleVagasRequest</a></li><li><a href="global.html#montarObjeto">montarObjeto</a></li><li><a href="global.html#obterOpcaoMesAtual">obterOpcaoMesAtual</a></li><li><a href="global.html#proximaLinhaInsercao">proximaLinhaInsercao</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Tue Jul 14 2026 17:34:22 GMT-0300 (Horário Padrão de Brasília)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

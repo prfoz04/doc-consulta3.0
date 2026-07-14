@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: webApp.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: webApp.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * @file webApp.js
+ * @description Responsável por buscar e alterar dados nas planilhas.
+ */
+
+/**
+ * Função para buscar por nome na aba PSC
+ * @param {object[][]} dadosPSC 
+ * @param {object[][]} dadosPP 
+ * @param {*} links 
+ * @param {string} nome 
+ * @returns {object}
+ */
+function buscarPorNome(dadosPSC, dadosPP, links, nome) {
+  for (var i = 1; i &lt; dadosPSC.length; i++) {
+    //caso a caixa de email estiver marcada significa que está na fila para ser encerrado pelo acionador, portanto, não deve ser enviado
+    const encerrado = dadosPSC[i][12] === 'Encerramento' || dadosPSC[i][12] === 'Indulto'; 
+    if (dadosPSC[i][1] == nome &amp;&amp; !encerrado) { // Coluna B (índice 1) é onde estão os nomes
+      const ppCadastrada = !!dadosPSC[i][15]; // Coluna P (índice 15)
+      let saldoPP = "";
+      let penaValorPP = "";
+      let dataSaldo = "";
+      let parcelaPP = "";
+      let contaPP = "";
+      
+      if (ppCadastrada) {
+        const processo = dadosPSC[i][0];
+        const ppDados = buscarDadosPP(processo);
+        saldoPP = ppDados.saldo;
+        penaValorPP = ppDados.penaValor;
+        dataSaldo = ppDados.dataSaldo;
+        parcelaPP = ppDados.parcela;
+        contaPP = ppDados.conta;
+      }
+      return {
+        processo: dadosPSC[i][0], // Coluna A
+        nome: dadosPSC[i][1], 
+        pena: dadosPSC[i][2], // Coluna C (índice 2)
+        classe: dadosPSC [i][14],
+        entidade: dadosPSC[i][7], // Coluna H (índice 7)
+        executado: dadosPSC[i][5], // Coluna F (índice 5)
+        relatorio: extrairLink(links[i - 1][0]), // Link correto da coluna K
+        status: ppCadastrada ? "PP cadastrada" : "", // Coluna P (índice 15)
+        juizo: dadosPSC[i][8], // Ajuste aqui para formatar corretamente
+        saldo: saldoPP,
+        penaPP: penaValorPP,
+        dataPP: dataSaldo, 
+        parcela: parcelaPP,
+        conta: contaPP
+      };
+    }
+  }
+  for (var j = 1; j &lt; dadosPP.length; j++) {
+    if (dadosPP[j][1] == nome &amp;&amp; dadosPP[j][19] !== 'Removido') { // Coluna B (índice 1) com o nome
+      return {
+        processo: dadosPP[j][0],
+        nome: dadosPP[j][1],
+        classe: dadosPP[j][20] || "",
+        juizo: dadosPP[j][18] || "",
+        saldo: dadosPP[j][3], // ajuste conforme coluna de saldo no PP
+        penaPP: dadosPP[j][21] || "", // ajuste conforme coluna de pena no PP
+        dataPP: dadosPP[j][24] || "",
+        parcela: dadosPP[j][26] || "",
+        conta: dadosPP[j][2] || ""
+      };
+    }
+  }
+  return { erro: "Nome não encontrado!" };
+}
+
+/**
+ * Função para buscar por processo na aba PSC
+ * @param {object[][]} dadosPSC 
+ * @param {object[][]} dadosPP 
+ * @param {*} links 
+ * @param {string} processo 
+ * @returns {object}
+ */
+function buscarPorProcesso(dadosPSC, dadosPP, links, processo) {
+  for (var i = 1; i &lt; dadosPSC.length; i++) {
+    //caso a caixa de email estiver marcada significa que está na fila para ser encerrado pelo acionador, portanto, não deve ser enviado
+    const encerrado = dadosPSC[i][12] === 'Encerramento' || dadosPSC[i][12] === 'Indulto';
+    if (dadosPSC[i][0] == processo &amp;&amp; !encerrado) { // Coluna A (índice 0) é onde estão os processos
+      const ppCadastrada = !!dadosPSC[i][15]; // Coluna P (índice 15)
+      let saldoPP = "";
+      let penaValorPP = "";
+      let dataSaldo = "";
+      let parcelaPP ="";
+      let contaPP = "";
+
+      if (ppCadastrada) {
+        const processo = dadosPSC[i][0];
+        const ppDados = buscarDadosPP(processo);
+        saldoPP = ppDados.saldo;
+        penaValorPP = ppDados.penaValor;
+        dataSaldo = ppDados.dataSaldo;
+        parcelaPP = ppDados.parcela;
+        contaPP = ppDados.conta;
+      }
+      return {
+        processo: dadosPSC[i][0], // Coluna A (índice 0)
+        nome: dadosPSC[i][1], 
+        pena: dadosPSC[i][2], // Coluna C (índice 2)
+        classe: dadosPSC [i][14],
+        entidade: dadosPSC[i][7], // Coluna H (índice 7)
+        executado: dadosPSC[i][5], // Coluna F (índice 5)
+        relatorio: extrairLink(links[i - 1][0]), // Link correto da coluna K
+        status: ppCadastrada ? "PP cadastrada" : "", // Coluna P (índice 15)
+        juizo: dadosPSC[i][8], // Ajuste aqui para formatar corretamente
+        saldo: saldoPP,
+        penaPP: penaValorPP,
+        dataPP: dataSaldo, 
+        parcela: parcelaPP,
+        conta: contaPP
+
+      };
+    }
+  }
+  for (var j = 1; j &lt; dadosPP.length; j++) {
+    if (dadosPP[j][0] == processo &amp;&amp; dadosPP[j][19] !== 'Removido') { // Coluna B (índice 1) com o nome
+      return {
+        processo: dadosPP[j][0],
+        nome: dadosPP[j][1],
+        classe: dadosPP[j][20] || "",
+        juizo: dadosPP[j][18] || "",
+        saldo: dadosPP[j][3], // ajuste conforme coluna de saldo no PP
+        penaPP: dadosPP[j][21] || "", // ajuste conforme coluna de pena no PP
+        dataPP: dadosPP[j][24] || "",
+        parcela: dadosPP[j][26] || "",
+        conta: dadosPP[j][2] || ""
+      };
+    }
+  }
+  return { erro: "Processo não encontrado!" };
+}
+
+/**
+ * @typedef DadosPP 
+ * @property {string} conta
+ * @property {string} saldo
+ * @property {string} penaValor
+ * @property {string} dataSaldo
+ * @property {string} parcela
+ */
+
+/**
+ * Busca os dados referente ao processo na aba PP
+ * @param {string} processo 
+ * @returns {DadosPP}
+ */
+function buscarDadosPP(processo) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const abaPP = ss.getSheetByName("PP");
+  const dados = abaPP.getDataRange().getValues();
+  const dados2 = abaPP.getDataRange().getDisplayValues();
+  for (let i = 1; i &lt; dados.length; i++) {
+    if (dados[i][0] == processo) {  // Coluna A = índice 0
+      if (dados[i][19] === 'Removido')
+        return {
+          conta: "",
+          saldo: "",
+          penaValor: "",
+          dataSaldo : "",
+          parcela: ""
+        };
+      return {
+        conta: dados[i][2], // coluna C
+        saldo: dados[i][3],        // Coluna d 
+        penaValor: dados[i][21] ,    // Coluna t = vira v
+        dataSaldo : dados[i][24],  //coluna w - vira z
+        parcela: dados2[i][26]// coluna AA
+      };
+    }
+  }
+  return {
+    conta: "",
+    saldo: "",
+    penaValor: "",
+    dataSaldo : "",
+    parcela: ""
+  };
+}
+
+/**
+ * Função para extrair o link de uma célula com texto formatado
+ * @param {GoogleAppsScript.Spreadsheet.RichTextValue} richText 
+ * @returns {string} link
+ */
+function extrairLink(richText) {
+  if (richText &amp;&amp; richText.getRuns().length > 0) {
+    var link = richText.getRuns()[0].getLinkUrl();
+    return link ? link : "Sem link";
+  }
+  return "Sem link";
+}
+
+/**
+ * retorna uma lista com as entidades para exibir no site ou
+ * caso informe uma entidade, retorna a lista com seus prestadores
+ * @param {e} e 
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} planilha 
+ * @return {object}
+ */
+function buscarEntidadesOuPrestadores(e, planilha) {
+  var abaPSC = planilha.getSheetByName("PSC");
+  var dadosPSC = abaPSC.getDataRange().getValues();
+
+  var abaEntidades = planilha.getSheetByName("Entidades");
+  var dadosEntidades = abaEntidades.getDataRange().getValues()
+
+  // Se nenhum parâmetro "entidade" for enviado, retorna apenas os nomes das entidades
+  if (!e.parameter.entidade || e.parameter.getEntidades !== undefined) {
+    var entidadesSet = new Set();
+    for (var i = 3; i &lt; dadosEntidades.length; i++) {
+      var entidade = dadosEntidades[i]; 
+      if (entidade[0] != '' &amp;&amp; ((entidade[1] != '' &amp;&amp; entidade[1] != 'encerramento') || entidade[1] === 0) &amp;&amp; entidade[0] !== 'Resultado:') {
+        entidadesSet.add([entidade[0]]);
+      }
+    }
+    var entidades = Array.from(entidadesSet);
+    entidades.sort((a, b) => a[0].localeCompare(b[0], 'pt-BR', { sensitivity : 'base' }))
+    return ContentService.createTextOutput(JSON.stringify({ entidades: entidades }))
+           .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  // Se uma entidade foi selecionada, retorna os prestadores dessa entidade.
+  var entidadeSelecionada = e.parameter.entidade;
+  var prestadores = [];
+  for (var i = 1; i &lt; dadosPSC.length; i++) {
+    if (dadosPSC[i][7] === entidadeSelecionada) {
+      prestadores.push(dadosPSC[i][1]); // Coluna 2 (índice 1)
+    }
+  }
+  return ContentService.createTextOutput(JSON.stringify({ prestadores: prestadores }))
+         .setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
+ * cria uma mensagem de erro em um formatada para o front-end
+ * @param {string} mensagem 
+ * @returns {object}
+ */
+function criarRespostaErro(mensagem) {
+  return ContentService
+    .createTextOutput(JSON.stringify({ sucesso: false, mensagem: mensagem }))
+    .setMimeType(ContentService.MimeType.JSON)
+    // @ts-ignore
+    .setHeader("Access-Control-Allow-Origin", "*")
+    .setHeader("Access-Control-Allow-Methods", "POST, OPTIONS")
+    .setHeader("Access-Control-Allow-Headers", "Content-Type");
+}
+
+/**
+ * cria uma mensagem de sucesso formatada para o front-end
+ * @param {string} mensagem 
+ * @returns {object}
+ */
+function criarRespostaSucesso(mensagem) {
+  return ContentService
+    .createTextOutput(JSON.stringify({ sucesso: true, mensagem: mensagem }))
+    .setMimeType(ContentService.MimeType.JSON)
+    // @ts-ignore
+    .setHeader("Access-Control-Allow-Origin", "*")
+    .setHeader("Access-Control-Allow-Methods", "POST, OPTIONS")
+    .setHeader("Access-Control-Allow-Headers", "Content-Type");
+}
+
+/**
+ * nunca usada 
+ */
+function doOptions(e) {
+  return ContentService.createTextOutput("")
+    .setMimeType(ContentService.MimeType.TEXT)
+    // @ts-ignore
+    .setHeader("Access-Control-Allow-Origin", "*")
+    .setHeader("Access-Control-Allow-Methods", "POST, OPTIONS")
+    .setHeader("Access-Control-Allow-Headers", "Content-Type");
+}
+
+/**
+ * altera a celula entidade da psc ou a fiscalização da pp para indicar que 
+ * o cadastro foi removido.
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} planilha 
+ * @param {string} prestador 
+ * @param {boolean} induto 
+ */
+function excluirPena(planilha, prestador, induto) {
+  const textoPP = 'Removido';
+  const textoPSC = 'encerrado';
+  
+  if (induto === null) {
+    const aba = planilha.getSheetByName('3PP');
+    const colunaPrestador = buscarColuna(aba, 'PARTE - POLO PASSIVO');
+    const coluna = buscarColuna(aba, 'Fiscalizar');
+    const linha = buscarLinha(aba, colunaPrestador, prestador);
+    if (linha != -1 &amp;&amp; coluna != -1) {
+      aba.getRange(linha, coluna).setValue(textoPP)
+      console.log(`célula da linha ${linha} coluna ${coluna} atualizada`)
+    }
+  }
+  else {
+    const aba = planilha.getSheetByName('Lotação');
+    const colunaPrestador = buscarColuna(aba, 'Prestador de serviços');
+    const colunaTemporaria = buscarColuna(aba, 'Temporário');
+    const linha = buscarLinha(aba, colunaPrestador, prestador);
+    if (linha != -1 &amp;&amp; colunaTemporaria != -1) {
+      //insere na coluna temporaria para que o acionador encontre
+      aba.getRange(linha, colunaTemporaria).setValue(textoPSC);
+      const colunaEmail = buscarColuna(aba, 'E-mail');
+      if (induto) 
+        aba.getRange(linha, colunaEmail).setValue('Indulto');
+      else
+        aba.getRange(linha, colunaEmail).setValue('Encerramento');
+      console.log(`célula da linha ${linha} coluna ${colunaTemporaria} atualizada, célula de email marcada para envio quando possível.`)
+      SpreadsheetApp.flush();
+    }
+  }
+}
+
+/**
+ * altera o número de parcelas a serem pagas na planilha PP
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} planilha 
+ * @param {string} prestador 
+ * @param {string} parcela 
+ */
+function alterarParcela(planilha, prestador, parcela) {
+  const aba = planilha.getSheetByName('3PP');
+  const colunaPrestador = buscarColuna(aba, 'PARTE - POLO PASSIVO');
+  const coluna = buscarColuna(aba, 'n. Parcelas');
+  const linha = buscarLinha(aba, colunaPrestador, prestador);
+  if (coluna != -1 &amp;&amp; linha != -1) {
+    aba.getRange(linha, coluna).setValue(parcela);
+    console.log(`célula da linha ${linha} coluna ${coluna} atualizada`)
+  }
+  else 
+    throw new Error('Célula do prestador não encontrada');
+}
+
+/**
+ * altera a entidade na planilha PSC, apenas muda a célula, scripts de alteração
+ * estão na própria PSC
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} planilha 
+ * @param {string} prestador 
+ * @param {string} novaEntidade 
+ */
+function alterarEntidade(planilha, prestador, novaEntidade) {
+  const aba = planilha.getSheetByName('Lotação');
+  const colunaEntidade = buscarColuna(aba, 'Entidade');
+  const colunaPrestador = buscarColuna(aba, 'Prestador de serviços');
+  const linhaPrestador = buscarLinha(aba, colunaPrestador, prestador);
+  const celulaEntidade = aba.getRange(linhaPrestador, colunaEntidade);
+  const entidadeAnterior = celulaEntidade.getValue();
+  celulaEntidade.setValue(novaEntidade);
+  aba.getRange(linhaPrestador, 21).setValue(entidadeAnterior);
+}
+
+/**
+ * altera o conteudo da coluna pena, busca a linha baseada no parametro nome prestador
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} planilha 
+ * @param {string} prestador 
+ * @param {string} novaPena 
+ */
+function alterarPena(planilha, prestador, novaPena) {
+  const aba = planilha.getSheets()[0];
+  console.log(`aba ativa: ${aba.getSheetName()}`)
+  const colunaPrestador = 2;
+  const colunaPena = buscarColuna(aba, 'Pena');
+  const linhaPrestador = buscarLinha(aba, colunaPrestador, prestador);
+  if (colunaPena != -1 &amp;&amp; linhaPrestador != -1) {
+    aba.getRange(linhaPrestador, colunaPena).setValue(novaPena);
+    console.log(`célula da linha ${linhaPrestador} coluna ${colunaPena} atualizada`)
+  }
+  else 
+    throw new Error('Célula do prestador não encontrada');
+}
+
+/**
+ * busca uma coluna no cabeçalho
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} aba 
+ * @param {string} nome 
+ * @returns {number} coluna do excel ou -1
+ */
+function buscarColuna(aba, nome) {
+  let dados = aba.getRange(1, 1, 1, aba.getLastColumn()).getValues()[0];
+  let index = dados.indexOf(nome);
+  return index != -1 ? index + 1 : -1 
+}
+
+/**
+ * busca uma linha em uma coluna
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} aba 
+ * @param {number} coluna 
+ * @param {string} nome 
+ * @returns {number} linha do excel ou -1
+ */
+function buscarLinha(aba, coluna, nome) {
+  let dados = aba.getRange(1, coluna, aba.getLastRow(), coluna).getValues();
+  let list = dados.map(dados => dados[0]);
+  let index = list.indexOf(nome);
+  return index != -1 ? index + 1 : -1;
+}
+
+
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#alterarEntidade">alterarEntidade</a></li><li><a href="global.html#alterarParcela">alterarParcela</a></li><li><a href="global.html#alterarPena">alterarPena</a></li><li><a href="global.html#atualizar">atualizar</a></li><li><a href="global.html#atualizarPP">atualizarPP</a></li><li><a href="global.html#buscarCategorias">buscarCategorias</a></li><li><a href="global.html#buscarColuna">buscarColuna</a></li><li><a href="global.html#buscarDadosPP">buscarDadosPP</a></li><li><a href="global.html#buscarEntidadesOuPrestadores">buscarEntidadesOuPrestadores</a></li><li><a href="global.html#buscarLinha">buscarLinha</a></li><li><a href="global.html#buscarPorNome">buscarPorNome</a></li><li><a href="global.html#buscarPorProcesso">buscarPorProcesso</a></li><li><a href="global.html#buscarUltimaLinhaValida">buscarUltimaLinhaValida</a></li><li><a href="global.html#criarRespostaErro">criarRespostaErro</a></li><li><a href="global.html#criarRespostaSucesso">criarRespostaSucesso</a></li><li><a href="global.html#destinacaoValores">destinacaoValores</a></li><li><a href="global.html#doGet">doGet</a></li><li><a href="global.html#doOptions">doOptions</a></li><li><a href="global.html#doPost">doPost</a></li><li><a href="global.html#encontrarUltimaLinhaComConteudo">encontrarUltimaLinhaComConteudo</a></li><li><a href="global.html#enviarDadosParaAnalise">enviarDadosParaAnalise</a></li><li><a href="global.html#enviarParaLotacaoPP">enviarParaLotacaoPP</a></li><li><a href="global.html#enviarParaLotacaoPSC">enviarParaLotacaoPSC</a></li><li><a href="global.html#excluirPena">excluirPena</a></li><li><a href="global.html#extrairColunas">extrairColunas</a></li><li><a href="global.html#extrairLink">extrairLink</a></li><li><a href="global.html#handlePPPost">handlePPPost</a></li><li><a href="global.html#handlePPRequest">handlePPRequest</a></li><li><a href="global.html#handlePSCPost">handlePSCPost</a></li><li><a href="global.html#handlePSCRequest">handlePSCRequest</a></li><li><a href="global.html#handleVagasRequest">handleVagasRequest</a></li><li><a href="global.html#montarObjeto">montarObjeto</a></li><li><a href="global.html#obterOpcaoMesAtual">obterOpcaoMesAtual</a></li><li><a href="global.html#proximaLinhaInsercao">proximaLinhaInsercao</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Tue Jul 14 2026 17:34:22 GMT-0300 (Horário Padrão de Brasília)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
